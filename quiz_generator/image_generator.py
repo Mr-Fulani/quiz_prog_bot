@@ -1,152 +1,108 @@
-import textwrap
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import ImageFormatter
 import io
 
 
+def add_code_to_console(code_text, font_path, min_font_size=12, max_font_size=24):
+    console_width, console_height = 700, 250
+    padding_top = 40
+    padding_bottom = 20
+    padding_sides = 20
+    dot_area = 50  # Area reserved for control dots
 
-def add_code_to_console(code_text, padding_top, padding_sides, font_path, font_size):
-    processed_lines = []
-
-    # Обрабатываем каждую строку текста
-    for line in code_text.splitlines():
-        stripped_line = line.strip()
-
-        # Если строка пустая, добавляем её без изменений
-        if not stripped_line:
-            processed_lines.append(line)
-            continue
-
-        # Обработка существующих комментариев, оставляем как есть
-        if stripped_line.startswith('#'):
-            wrapped_line = textwrap.fill(line, width=60)
-            processed_lines.extend(wrapped_line.splitlines())
-            continue
-
-        # Обработка строк кода (начинаются с ключевых слов или имеют отступы)
-        if (line.lstrip().startswith(('def', 'class', 'print', 'return', 'import')) or
-                '=' in line or '**' in line or line[0].isspace()):
-            wrapped_code_line = textwrap.fill(line, width=60)
-            processed_lines.extend(wrapped_code_line.splitlines())
-            continue
-
-        # Для остальных строк добавляем символ # и переносим длинные строки
-        wrapped_description = textwrap.fill(line.strip(), width=60)
-        for wrapped_line in wrapped_description.splitlines():
-            processed_lines.append(f"# {wrapped_line}")
-
-    # Соединяем строки обратно
-    wrapped_code = "\n".join(processed_lines)
-
-    # Подсветка синтаксиса с помощью Pygments
     lexer = PythonLexer()
-    formatter = ImageFormatter(font_name=font_path, font_size=font_size, line_numbers=False, style="monokai",
-                               image_pad=10, background="dark")
 
-    # Сгенерировать изображение с подсветкой кода
-    code_image_data = highlight(wrapped_code, lexer, formatter)
-
-    # Открытие изображения с подсвеченным кодом
-    code_image = Image.open(io.BytesIO(code_image_data)).convert("RGBA")
-
-    # Прозрачность для темных областей
-    datas = code_image.getdata()
-    new_data = [(255, 255, 255, 0) if item[0] < 50 and item[1] < 50 and item[2] < 50 else item for item in datas]
-    code_image.putdata(new_data)
-
-    # Вычисляем размеры текста
-    code_image_width, code_image_height = code_image.size
-
-    # Динамическое изменение размеров консоли
-    console_width = code_image_width + 2 * padding_sides
-    console_height = code_image_height + padding_top + padding_sides
-
-    # Создаем пустое изображение для консоли (с прозрачностью)
-    console_image = Image.new("RGBA", (console_width, console_height), (0, 0, 0, 0))
-
-    # Создаем объект для рисования на консоли
-    draw_console = ImageDraw.Draw(console_image)
-
-    # Рисуем чёрный прямоугольник для консоли
-    draw_console.rounded_rectangle([(0, 0), (console_width, console_height)], radius=30, fill=(30, 30, 30))
-
-    # Центрирование текста внутри консоли
-    paste_x = (console_width - code_image_width) // 2
-    paste_y = padding_top
-
-    # Вставляем изображение с кодом в консоль
-    console_image.paste(code_image, (paste_x, paste_y), code_image)
-
-    return console_image, console_width, console_height
+    while True:
+        formatter = ImageFormatter(font_name=font_path, font_size=max_font_size, line_numbers=False,
+                                   style="monokai", background="dark")  # Устанавливаем тёмный фон
 
 
+        code_image_data = highlight(code_text, lexer, formatter)
+        code_image = Image.open(io.BytesIO(code_image_data)).convert("RGBA")
+
+
+
+        # Удаляем фон (чёрные пиксели)
+        data = code_image.getdata()
+        new_data = []
+        for item in data:
+            # Если цвет пикселя близок к чёрному, делаем его прозрачным
+            if item[:3] == (0, 0, 0):
+                new_data.append((0, 0, 0, 0))  # Прозрачный цвет
+            else:
+                new_data.append(item)
+        code_image.putdata(new_data)
+
+
+        if (code_image.width <= console_width - 2 * padding_sides - dot_area and
+                code_image.height <= console_height - padding_top - padding_bottom):
+            break
+
+        max_font_size -= 1
+        if max_font_size < min_font_size:
+            max_font_size = min_font_size
+            break
+
+    code_x = padding_sides + dot_area
+    code_y = padding_top + (console_height - padding_top - padding_bottom - code_image.height) // 2
+
+    return code_image, (code_x, code_y)
 
 
 def create_console_image_with_code(code_text: str, output_image_path: str, logo_path: str):
-    width, height = 1000, 700  # Размер фона
-    padding_top = 50  # Увеличенный отступ сверху
-    padding_sides = 50  # Увеличенные отступы по бокам
+    width, height = 800, 500
     font_path = "/Library/Fonts/Arial Unicode.ttf"
-    font_size = 26  # Увеличенный размер шрифта
+    background_color = (173, 216, 230)
+    console_color = (0, 0, 0, 255)
 
-    # Создаем фон изображения с фоновым цветом
-    background_color = (173, 216, 230)  # Светло-синий фон
-    image = Image.new("RGB", (width, height), background_color)
+    # Create background
+    image = Image.new("RGBA", (width, height), background_color + (255,))
     draw = ImageDraw.Draw(image)
 
-    # Генерация консоли с текстом
-    console_image, console_width, console_height = add_code_to_console(code_text, padding_top, padding_sides, font_path, font_size)
+    # Create console
+    console_width, console_height = 700, 250
+    console_x = (width - console_width) // 2
+    console_y = (height - console_height) // 2
 
-    # Центрирование консоли по фону
-    console_x0 = (width - console_width) // 2
-    console_y0 = (height - console_height) // 2
+    # Draw rounded rectangle for console
+    corner_radius = 20
+    console = Image.new("RGBA", (console_width, console_height), (0, 0, 0, 0))
+    console_draw = ImageDraw.Draw(console)
+    console_draw.rounded_rectangle([(0, 0), (console_width, console_height)],
+                                   radius=corner_radius, fill=console_color)
 
-    # Вставляем консоль на фон
-    image.paste(console_image, (console_x0, console_y0), console_image)
+    # Add code to console
+    code_image, (code_x, code_y) = add_code_to_console(code_text, font_path)
+    console.paste(code_image, (code_x, code_y), code_image)
 
-    # Рисуем кнопки управления (красную, жёлтую и зелёную точки)
-    circle_radius = 16  # Увеличиваем размер кнопок
-    circle_spacing = 25  # Увеличиваем отступы между кнопками
-    circle_y = console_y0 + 20  # Позиция кнопок
+    # Add control dots
+    circle_radius = 8
+    circle_spacing = 25
+    circle_y = 15
+    for color in [(255, 59, 48), (255, 204, 0), (40, 205, 65)]:
+        console_draw.ellipse((circle_spacing, circle_y,
+                              circle_spacing + 2 * circle_radius,
+                              circle_y + 2 * circle_radius), fill=color)
+        circle_spacing += 30
 
-    # Красная точка
-    draw.ellipse((console_x0 + circle_spacing, circle_y, console_x0 + circle_spacing + 2 * circle_radius,
-                  circle_y + 2 * circle_radius), fill=(255, 59, 48))
-    # Жёлтая точка
-    draw.ellipse((console_x0 + 3 * circle_spacing, circle_y, console_x0 + 3 * circle_spacing + 2 * circle_radius,
-                  circle_y + 2 * circle_radius), fill=(255, 204, 0))
-    # Зелёная точка
-    draw.ellipse((console_x0 + 5 * circle_spacing, circle_y, console_x0 + 5 * circle_spacing + 2 * circle_radius,
-                  circle_y + 2 * circle_radius), fill=(40, 205, 65))
+    # Paste console onto background
+    image.paste(console, (console_x, console_y), console)
 
-    # Добавляем логотип в правый верхний угол
+    # Add logo
     add_logo(image, logo_path)
 
-    # Сохранить изображение
+    # Save image
     image.save(output_image_path)
 
 
 def add_logo(image: Image, logo_path: str):
-    """
-    Добавляет логотип в правый верхний угол изображения.
-    :param image: Изображение, на которое нужно добавить логотип.
-    :param logo_path: Путь к файлу логотипа.
-    """
-    logo = Image.open("media/administration/logo_no_back.png")
-
-    # Конвертируем логотип в формат RGBA (чтобы поддерживалась прозрачность)
+    logo = Image.open(logo_path)
     if logo.mode != 'RGBA':
         logo = logo.convert('RGBA')
-
-    # Изменяем размер логотипа под картинку (например, 10% от ширины изображения)
     logo_width = int(image.width * 0.1)
     logo_height = int(logo_width * logo.height / logo.width)
     logo = logo.resize((logo_width, logo_height), Image.Resampling.LANCZOS)
-
-    # Определяем позицию для логотипа в правом верхнем углу
-    position = (image.width - logo_width - 10, 10)  # 10 пикселей отступ от правого верхнего угла
-
-    # Добавляем логотип на изображение
+    position = (image.width - logo_width - 10, 10)
     image.paste(logo, position, logo)

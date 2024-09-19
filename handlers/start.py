@@ -11,28 +11,12 @@ import json
 
 
 
-def format_task_with_code(description: str, code: str) -> str:
+def format_task_with_code(code: str) -> str:
     """
-    Форматирует текст задачи с описанием и кодом.
-    Добавляет пустую строку между описанием и кодом, а также знак '#' для каждой строки описания.
+    Форматирует текст задачи без описания, добавляет пустую строку только между строками кода.
     """
-    # Обрабатываем описание задачи, добавляя '#' перед каждой строкой описания
-    processed_description_lines = []
-    for line in description.splitlines():
-        if line.strip():  # Добавляем '#' только к непустым строкам
-            processed_description_lines.append(f"# {line.strip()}")
-        else:
-            processed_description_lines.append(line)  # Пустые строки оставляем без изменений
-
-    # Соединяем описание
-    formatted_description = "\n".join(processed_description_lines)
-
-    # Проверяем код и добавляем пустую строку между описанием и кодом
-    if code is None:
-        code = ""  # Если код пустой, используем пустую строку
-
-    formatted_task = f"{formatted_description}\n\n{code.strip()}"
-    return formatted_task
+    # Убедимся, что код корректно обрабатывается
+    return code.strip()  # Очищаем от лишних пробелов
 
 
 
@@ -81,8 +65,8 @@ def register_start_handler(dp: Dispatcher) -> None:
             # Путь к файлу логотипа
             logo_path = "media/administration/logo_no_back.png"
 
-            # Форматируем текст задачи и код
-            question_with_code = format_task_with_code(task.question, task.code)
+            # Вместо формирования кода и описания задачи, просто передаём код задачи
+            question_with_code = format_task_with_code(task.code)
 
             # Генерируем изображение с кодом и логотипом
             create_console_image_with_code(question_with_code, image_path, logo_path)
@@ -95,3 +79,7 @@ def register_start_handler(dp: Dispatcher) -> None:
             await send_quiz(message.chat.id, task.question, answers, correct_index)
         else:
             await message.reply("Не удалось найти задачу для данной темы и уровня сложности.")
+
+
+
+
