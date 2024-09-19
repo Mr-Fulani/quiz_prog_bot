@@ -1,0 +1,18 @@
+[
+    {
+        "id": 1,
+        "level": "easy",
+        "topic": "list_comprehensions",
+        "question": "Создайте список квадратов чисел от 1 до 5 с помощью list comprehensions.",
+        "correct_answer": "[1, 4, 9, 16, 25]",
+        "wrong_answers": ["[1, 2, 3, 4, 5]", "[2, 4, 6, 8, 10]", "[1, 8, 27, 64, 125]"]
+    },
+    {
+        "id": 2,
+        "level": "medium",
+        "topic": "list_comprehensions",
+        "question": "Создайте список из чисел от 1 до 100, которые делятся на 3, с помощью list comprehensions.",
+        "correct_answer": "[3, 6, 9, 12, ... 99]",
+        "wrong_answers": ["[1, 3, 5, 7, 9]", "[3, 9, 15, ... 75]", "[2, 4, 6, 8, 10]"]
+    }
+]
